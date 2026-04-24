@@ -1,0 +1,298 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Bing Searches</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #2a4122; /* Matches the deep forest green in the photo */
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+
+        .window-frame {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-glass {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+        }
+
+        .inner-field {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+
+        .browser-tab {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.2s;
+            color: rgba(255,255,255,0.2);
+        }
+
+        /* Distinct Active States for Safari vs Edge */
+        .active-safari { background: #2563eb !important; color: white !important; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); border-color: #3b82f6 !important; }
+        .active-edge { background: #059669 !important; color: white !important; box-shadow: 0 0 15px rgba(5, 150, 105, 0.4); border-color: #10b981 !important; }
+
+        .btn-start {
+            background: #2563eb;
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-start:hover { filter: brightness(1.1); }
+        .btn-start:active { transform: scale(0.98); }
+
+        .mac-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        input[type="number"] { background: transparent; color: white; outline: none; border: none; text-align: center; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .label-heading {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Auth Lock Screen -->
+    <div id="lockScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2a4122]">
+        <div class="panel-glass p-12 text-center max-w-sm w-full">
+            <h2 class="text-xl font-bold mb-6 text-white">System Encrypted</h2>
+            <input type="password" id="pinInput" maxlength="4" placeholder="••••" 
+                class="w-full text-center text-4xl bg-black/30 border border-white/10 p-4 rounded-xl outline-none focus:border-blue-500 text-white tracking-[0.4em]">
+            <p class="mt-4 text-[10px] text-white/30 tracking-widest uppercase">Pin Required: 1045</p>
+        </div>
+    </div>
+
+    <!-- Main Application Window -->
+    <div id="app" class="hidden w-full max-w-6xl window-frame p-10 relative">
+        <!-- Mac Buttons -->
+        <div class="absolute top-6 left-8 flex">
+            <span class="mac-dot dot-red"></span>
+            <span class="mac-dot dot-yellow"></span>
+            <span class="mac-dot dot-green"></span>
+        </div>
+
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-10 pl-16">
+            <div>
+                <h1 class="text-4xl font-bold text-white tracking-tight">Automated Bing Searches</h1>
+                <p class="text-sm text-white/40 mt-1">Human-simulated typing, submission, and interaction loops.</p>
+            </div>
+            <div class="bg-black/20 rounded-full px-4 py-1.5 flex items-center gap-2 border border-white/5">
+                <span id="idleDot" class="w-2 h-2 rounded-full bg-gray-500"></span>
+                <span id="idleText" class="text-[10px] font-bold text-white/60 uppercase tracking-widest">Idle</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-10">
+            <!-- Left Side: Config -->
+            <div class="col-span-12 lg:col-span-6 space-y-8">
+                <div>
+                    <label class="label-heading">Browser Engine</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div id="tabSafari" class="browser-tab py-2.5 text-center text-sm font-semibold">Safari</div>
+                        <div id="tabEdge" class="browser-tab py-2.5 text-center text-sm font-semibold">Edge</div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="label-heading">Search Count</label>
+                    <div class="inner-field p-8 flex items-center justify-between">
+                        <span class="text-sm text-white/40 font-bold uppercase">Total Target</span>
+                        <div class="flex items-center gap-4">
+                            <input type="number" id="searchLimit" value="20" class="text-6xl font-bold w-32">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="label-heading">Delay (s)</label>
+                        <div class="inner-field p-4 flex justify-between items-center text-xs">
+                            <input type="number" id="minDelay" value="4.0" step="0.1" class="w-8">
+                            <span class="text-white/10">-</span>
+                            <input type="number" id="maxDelay" value="8.5" step="0.1" class="w-8">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="label-heading">Scroll (s)</label>
+                        <div class="inner-field p-4 flex justify-between items-center text-xs">
+                            <input type="number" value="5.0" class="w-8">
+                            <span class="text-white/10">-</span>
+                            <input type="number" value="10.0" class="w-8">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button id="mainBtn" class="btn-start px-12 py-4 text-xs uppercase tracking-widest">Start Automation</button>
+                    <button class="bg-white/5 border border-white/10 px-6 py-4 rounded-xl text-white/30 text-xs uppercase font-bold">Refresh Access</button>
+                </div>
+            </div>
+
+            <!-- Right Side: Details -->
+            <div class="col-span-12 lg:col-span-6 space-y-8">
+                <div class="panel-glass p-8 space-y-4">
+                    <label class="label-heading">Current Session</label>
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between border-b border-white/5 pb-2">
+                            <span class="text-white/30">Linked Browser</span>
+                            <span id="activeBrowser" class="text-white font-bold uppercase">Detecting...</span>
+                        </div>
+                        <div class="flex justify-between border-b border-white/5 pb-2">
+                            <span class="text-white/30">Reward Points</span>
+                            <span id="pointStatus" class="text-yellow-500 font-bold uppercase">Ready to Earn</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-white/30">Total Completed</span>
+                            <span id="progressText" class="text-white font-black text-lg">0 / 20</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-glass p-8">
+                    <h3 class="text-xs font-bold text-blue-400 uppercase mb-3">Automation Info</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">
+                        To guarantee points, the automation includes a 4–8 second "view" delay on the search results. This ensures Microsoft registers the search as human activity.
+                    </p>
+                    <div class="mt-6 flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                        <div class="text-red-500">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-width="2"></path></svg>
+                        </div>
+                        <p class="text-[10px] text-red-200/60 font-medium leading-tight">USE AT YOUR OWN RISK. ENSURE ACCESSIBILITY IS GRANTED.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pinInput = document.getElementById('pinInput');
+        const lockScreen = document.getElementById('lockScreen');
+        const app = document.getElementById('app');
+        const mainBtn = document.getElementById('mainBtn');
+        const progressText = document.getElementById('progressText');
+        const pointStatus = document.getElementById('pointStatus');
+        const searchLimit = document.getElementById('searchLimit');
+
+        let isRunning = false;
+        let count = 0;
+        let automationWindow = null;
+        let words = ["History", "Space", "Technology", "Nature", "Weather", "Economy", "Health", "Fitness", "Cooking", "Travel", "Art", "Philosophy"];
+
+        pinInput.oninput = (e) => {
+            if (e.target.value === '1045') {
+                lockScreen.classList.add('hidden');
+                app.classList.remove('hidden');
+                detectBrowser();
+            }
+        };
+
+        function detectBrowser() {
+            const ua = navigator.userAgent;
+            const vendor = navigator.vendor;
+            const isEdge = ua.includes("Edg/");
+            const isSafari = vendor.includes("Apple") && ua.includes("Safari") && !ua.includes("Chrome");
+
+            if (isSafari) {
+                document.getElementById('tabSafari').classList.add('active-safari');
+                document.getElementById('activeBrowser').innerText = "Safari Linked";
+            } else if (isEdge) {
+                document.getElementById('tabEdge').classList.add('active-edge');
+                document.getElementById('activeBrowser').innerText = "Edge Linked";
+            } else {
+                document.getElementById('activeBrowser').innerText = "Standalone";
+            }
+        }
+
+        mainBtn.onclick = () => {
+            if (isRunning) stop(); else start();
+        };
+
+        function start() {
+            automationWindow = window.open('https://www.bing.com', 'BingAuto', 'width=1000,height=800');
+            if (!automationWindow) {
+                alert("Please enable popups in your browser settings.");
+                return;
+            }
+            isRunning = true;
+            count = 0;
+            mainBtn.innerText = "Stop Session";
+            mainBtn.classList.replace('bg-blue-600', 'bg-red-500');
+            document.getElementById('idleDot').className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
+            document.getElementById('idleText').innerText = "Running";
+            runLoop();
+        }
+
+        function stop() {
+            isRunning = false;
+            mainBtn.innerText = "Start Automation";
+            document.getElementById('idleDot').className = "w-2 h-2 rounded-full bg-gray-500";
+            document.getElementById('idleText').innerText = "Idle";
+            pointStatus.innerText = "Ready to Earn";
+            pointStatus.className = "text-yellow-500 font-bold uppercase";
+            if (automationWindow) automationWindow.close();
+        }
+
+        async function runLoop() {
+            const limit = parseInt(searchLimit.value);
+            if (!isRunning || count >= limit) {
+                if (count >= limit) stop();
+                return;
+            }
+
+            const query = words[Math.floor(Math.random() * words.length)] + " " + Math.floor(Math.random() * 9999);
+            
+            if (automationWindow && !automationWindow.closed) {
+                automationWindow.location.href = `https://www.bing.com/search?q=${encodeURIComponent(query)}&FORM=QBRE`;
+            } else {
+                stop();
+                return;
+            }
+
+            pointStatus.innerText = "Earning Points...";
+            pointStatus.className = "text-blue-400 font-bold uppercase";
+
+            const min = parseFloat(document.getElementById('minDelay').value) * 1000;
+            const max = parseFloat(document.getElementById('maxDelay').value) * 1000;
+            const delay = Math.floor(Math.random() * (max - min)) + min;
+            
+            await new Promise(r => setTimeout(r, delay));
+
+            count++;
+            progressText.innerText = `${count} / ${limit}`;
+            pointStatus.innerText = "Point Logged";
+            pointStatus.className = "text-green-500 font-bold uppercase";
+
+            await new Promise(r => setTimeout(r, 1500)); // Brief break
+            runLoop();
+        }
+    </script>
+</body>
+</html>
+
+```
